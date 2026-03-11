@@ -71,12 +71,31 @@ async function fetchAlerts() {
 
 // Endpoint for the React Native app to get current alert status
 app.get('/api/alerts', (req, res) => {
-  res.json({
-      active: alertActive,
-      title: alertTitle,
-      areas: currentAlerts,
-      timestamp: new Date().toISOString()
-  });
+    // Mock an alert every 15 seconds for 5 seconds duration
+    const second = new Date().getSeconds();
+    const isMockAlert = second % 15 < 5;
+
+    if (isMockAlert) {
+      res.json({
+          active: true,
+          title: 'ירי רקטות וטילים', // Missile Alert in Hebrew
+          areas: [
+            'תל אביב - יפו', 'רמת גן', 'גבעתיים', 'בני ברק', 'פתח תקווה',
+            'הרצליה', 'רמת השרון', 'חולון', 'בת ים', 'ראשון לציון',
+            'אשדוד', 'אשקלון', 'שדרות', 'נתיבות', 'אופקים',
+            'באר שבע', 'ירושלים', 'חיפה', 'נתניה', 'חדרה',
+            'רעננה', 'כפר סבא', 'הוד השרון', 'ראש העין', 'רחובות'
+          ],
+          timestamp: new Date().toISOString()
+      });
+    } else {
+      res.json({
+          active: alertActive,
+          title: alertTitle,
+          areas: currentAlerts,
+          timestamp: new Date().toISOString()
+      });
+    }
 });
 
 const POLLING_INTERVAL_MS = 2000;
