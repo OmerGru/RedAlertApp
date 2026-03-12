@@ -5,7 +5,6 @@ import cors from 'cors';
 const app = express();
 app.use(cors());
 
-// The unofficial but widely used Oref real-time alert endpoint.
 const OREF_ALERTS_URL = 'https://www.oref.org.il/WarningMessages/alert/alerts.json';
 
 const HEADERS = {
@@ -25,10 +24,25 @@ interface AlertResponse {
   desc?: string;
 }
 
+export interface AlertHistoryEntry {
+  id: string;
+  title: string;
+  areas: string[];
+  timestamp: number;
+}
+
+const MAX_HISTORY = 50;
 let lastAlertId = '';
 let currentAlerts: string[] = [];
 let alertActive = false;
 let alertTitle = 'Quiet';
+const history: AlertHistoryEntry[] = [];
+
+function addToHistory(entry: AlertHistoryEntry) {
+  if (history.some((h) => h.id === entry.id)) return;
+  history.unshift(entry);
+  if (history.length > MAX_HISTORY) history.pop();
+}
 
 async function fetchAlerts() {
   try {
@@ -38,7 +52,7 @@ async function fetchAlerts() {
     });
 
     const rawData = response.data as unknown as string;
-    
+
     if (rawData && rawData.trim() !== '') {
       const cleanData = rawData.replace(/^\uFEFF/, '');
       const alertData: AlertResponse = JSON.parse(cleanData);
@@ -48,16 +62,23 @@ async function fetchAlerts() {
         currentAlerts = alertData.data;
         alertActive = true;
         alertTitle = alertData.title || 'Missile Alert';
-        
+
+        const entry: AlertHistoryEntry = {
+          id: alertData.id,
+          title: alertTitle,
+          areas: currentAlerts,
+          timestamp: Date.now(),
+        };
+        addToHistory(entry);
+
         console.log(`\n🚨 [ALERT DETECTED - ${new Date().toISOString()}]`);
         console.log(`Title: ${alertTitle}`);
         console.log(`Areas: \n - ${currentAlerts.join('\n - ')}`);
         console.log('--------------------------------------------------');
       }
     } else {
-      // If we got an empty response, the alert is over
       if (alertActive) {
-         console.log(`\n🟢 [ALL CLEAR - ${new Date().toISOString()}]`);
+        console.log(`\n🟢 [ALL CLEAR - ${new Date().toISOString()}]`);
       }
       alertActive = false;
       currentAlerts = [];
@@ -69,45 +90,28 @@ async function fetchAlerts() {
   }
 }
 
-// Endpoint for the React Native app to get current alert status
 app.get('/api/alerts', (req, res) => {
-    // Mock an alert every 15 seconds for 5 seconds duration
-    const second = new Date().getSeconds();
-    const isMockAlert = second % 15 < 5;
+  res.json({
+    active: alertActive,
+    title: alertTitle,
+    areas: currentAlerts,
+    timestamp: Date.now(),
+  });
+});
 
-    if (isMockAlert) {
-      res.json({
-          active: true,
-          title: 'ירי רקטות וטילים', // Missile Alert in Hebrew
-          areas: [
-            'תל אביב - יפו', 'רמת גן', 'גבעתיים', 'בני ברק', 'פתח תקווה',
-            'הרצליה', 'רמת השרון', 'חולון', 'בת ים', 'ראשון לציון',
-            'אשדוד', 'אשקלון', 'שדרות', 'נתיבות', 'אופקים',
-            'באר שבע', 'ירושלים', 'חיפה', 'נתניה', 'חדרה',
-            'רעננה', 'כפר סבא', 'הוד השרון', 'ראש העין', 'רחובות'
-          ],
-          timestamp: new Date().toISOString()
-      });
-    } else {
-      res.json({
-          active: alertActive,
-          title: alertTitle,
-          areas: currentAlerts,
-          timestamp: new Date().toISOString()
-      });
-    }
+app.get('/api/alerts/history', (req, res) => {
+  res.json(history);
 });
 
 const POLLING_INTERVAL_MS = 2000;
 const PORT = 3000;
 
 app.listen(PORT, () => {
-    console.log('==================================================');
-    console.log(`🛡️  Oref API Poller & Express Server Running on port ${PORT}`);
-    console.log(`⏱️  Polling Oref every ${POLLING_INTERVAL_MS / 1000} seconds...`);
-    console.log('==================================================');
-    
-    setInterval(fetchAlerts, POLLING_INTERVAL_MS);
-    fetchAlerts();
-});
+  console.log('==================================================');
+  console.log(`🛡️  Oref API Poller & Express Server Running on port ${PORT}`);
+  console.log(`⏱️  Polling Oref every ${POLLING_INTERVAL_MS / 1000} seconds...`);
+  console.log('==================================================');
 
+  setInterval(fetchAlerts, POLLING_INTERVAL_MS);
+  fetchAlerts();
+});

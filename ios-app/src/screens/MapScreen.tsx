@@ -1,135 +1,249 @@
 import { StyleSheet, View, Text, Platform, ScrollView, Animated } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useEffect, useState, createElement, useRef } from 'react';
-import axios from 'axios';
+import { useEffect, useState, createElement, useRef, useCallback } from 'react';
+import { useAlerts } from '../hooks/useAlerts';
+import { useAlertHistory } from '../hooks/useAlertHistory';
+import AreaItem from '../components/AreaItem';
+import {
+  MAP_CYCLE_INTERVAL_MS,
+  CITY_COORDINATES,
+  ISRAEL_CENTER,
+  ISRAEL_DEFAULT_ZOOM,
+  MAP_CIRCLE_LINGER_MS,
+} from '../utils/constants';
+import { AlertHistoryEntry } from '../utils/types';
+import { t } from '../utils/i18n';
 
-interface AlertState {
-  active: boolean;
-  title: string;
-  areas: string[];
+interface CircleLayer {
+  lat: number;
+  lng: number;
+  radius: number;
+  fillOpacity: number;
+  color: string;
+  label: string;
 }
 
+function buildCircleLayers(activeAreas: string[], history: AlertHistoryEntry[]): CircleLayer[] {
+  const now = Date.now();
+  const layers: CircleLayer[] = [];
+  const seen = new Set<string>();
+
+  for (const area of activeAreas) {
+    const coords = CITY_COORDINATES[area];
+    if (!coords) { console.warn(`[Map] No coordinates for: "${area}"`); continue; }
+    seen.add(area);
+    layers.push({ ...coords, fillOpacity: 0.40, color: '#ff2d00', label: area });
+  }
+
+  for (const entry of history) {
+    const ageMs = now - entry.timestamp;
+    if (ageMs > MAP_CIRCLE_LINGER_MS) continue;
+    for (const area of entry.areas) {
+      if (seen.has(area)) continue;
+      const coords = CITY_COORDINATES[area];
+      if (!coords) continue;
+      seen.add(area);
+      layers.push({ ...coords, fillOpacity: 0.40, color: '#ff2d00', label: area });
+    }
+  }
+
+  return layers;
+}
+
+// Returns a deduplicated union of active areas + recent history areas (within linger window)
+function buildDisplayAreas(activeAreas: string[], history: AlertHistoryEntry[]): string[] {
+  const now = Date.now();
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const area of activeAreas) {
+    if (!seen.has(area)) { seen.add(area); result.push(area); }
+  }
+  for (const entry of history) {
+    if (now - entry.timestamp > MAP_CIRCLE_LINGER_MS) continue;
+    for (const area of entry.areas) {
+      if (!seen.has(area)) { seen.add(area); result.push(area); }
+    }
+  }
+  return result;
+}
+
+// The base HTML is built ONCE — it sets up the Leaflet map and exposes
+// a global `window.updateCircles(layers)` function that React can call
+// via postMessage / injectJavaScript without ever reloading the iframe.
+const BASE_HTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; background: #1a1a2e; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map', {
+      center: [${ISRAEL_CENTER[0]}, ${ISRAEL_CENTER[1]}],
+      zoom: ${ISRAEL_DEFAULT_ZOOM},
+      zoomControl: true,
+      attributionControl: false
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    var circleLayer = L.layerGroup().addTo(map);
+
+    function updateCircles(layers) {
+      circleLayer.clearLayers();
+      layers.forEach(function(l) {
+        L.circle([l.lat, l.lng], {
+          radius: l.radius,
+          color: l.color,
+          fillColor: l.color,
+          fillOpacity: l.fillOpacity,
+          weight: 2,
+          opacity: Math.min(l.fillOpacity * 2, 0.9)
+        }).addTo(circleLayer)
+          .bindTooltip(l.label, { permanent: false, direction: 'top' });
+      });
+    }
+
+    // Listen for messages from React (web iframe postMessage)
+    window.addEventListener('message', function(e) {
+      try {
+        var data = JSON.parse(e.data);
+        if (data.type === 'UPDATE_CIRCLES') updateCircles(data.layers);
+      } catch(err) {}
+    });
+
+    // Also listen for React Native WebView injectedJavaScript calls
+    document.addEventListener('message', function(e) {
+      try {
+        var data = JSON.parse(e.data);
+        if (data.type === 'UPDATE_CIRCLES') updateCircles(data.layers);
+      } catch(err) {}
+    });
+  </script>
+</body>
+</html>`;
+
 export default function MapScreen() {
-  const [alert, setAlert] = useState<AlertState>({ active: false, title: 'Quiet', areas: [] });
+  const alert = useAlerts();
+  const history = useAlertHistory();
   const [displayIndex, setDisplayIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const webViewRef = useRef<WebView>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  // Poll for live alerts
-  useEffect(() => {
-    const fetchAlerts = async () => {
-      try {
-        const response = await axios.get('http://192.168.1.236:3000/api/alerts');
-        setAlert(response.data);
-      } catch (error) {
-        console.error('Error fetching alerts for map:', error);
-      }
-    };
-
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 1000);
-    return () => clearInterval(interval);
+  // Send new circle data without reloading the map
+  const pushLayers = useCallback((layers: CircleLayer[]) => {
+    const msg = JSON.stringify({ type: 'UPDATE_CIRCLES', layers });
+    if (Platform.OS === 'web') {
+      iframeRef.current?.contentWindow?.postMessage(msg, '*');
+    } else {
+      webViewRef.current?.injectJavaScript(
+        `(function(){ window.dispatchEvent(new MessageEvent('message', { data: ${JSON.stringify(msg)} })); })()`
+      );
+    }
   }, []);
 
-  // Cycle through locations 10 at a time every 4 seconds
+  // Push layers whenever alert or history changes
   useEffect(() => {
-    if (!alert.active || alert.areas.length <= 10) return;
+    const layers = buildCircleLayers(alert.active ? alert.areas : [], history);
+    pushLayers(layers);
+  }, [alert.active, alert.areas, history, pushLayers]);
 
+  const displayAreas = buildDisplayAreas(alert.active ? alert.areas : [], history);
+
+  useEffect(() => {
+    if (displayAreas.length <= 10) return;
     const cycleInterval = setInterval(() => {
-      // Fade out
       Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
-        // Change Index
-        setDisplayIndex((prevIndex) => (prevIndex + 10) % alert.areas.length);
-        // Fade in
+        setDisplayIndex((prev) => (prev + 10) % displayAreas.length);
         Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       });
-    }, 4000);
-
+    }, MAP_CYCLE_INTERVAL_MS);
     return () => clearInterval(cycleInterval);
-  }, [alert.active, alert.areas.length]);
+  }, [displayAreas.length]);
 
-  // Reset index when alert clears
   useEffect(() => {
-    if (!alert.active) setDisplayIndex(0);
-  }, [alert.active]);
+    if (displayAreas.length === 0) setDisplayIndex(0);
+  }, [displayAreas.length]);
 
-  // Determine the bounding box for the map URL based on alert active status
-  const bbox = alert.active ? '34.72,32.02,34.85,32.14' : '34.0,29.5,36.0,33.5';
-  const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik`;
+  const currentAreas = displayAreas.slice(displayIndex, displayIndex + 12);
 
-  // Get the current 10 locations to display
-  const currentAreas = alert.areas.slice(displayIndex, displayIndex + 10);
+  const handleIframeRef = useCallback((el: HTMLIFrameElement | null) => {
+    iframeRef.current = el;
+    // Once the iframe loads push the current state immediately
+    if (el) {
+      el.onload = () => {
+        const layers = buildCircleLayers(alert.active ? alert.areas : [], history);
+        el.contentWindow?.postMessage(JSON.stringify({ type: 'UPDATE_CIRCLES', layers }), '*');
+      };
+    }
+  }, []); // intentionally empty deps — we want a stable ref callback
 
   return (
     <View style={styles.container}>
       <View style={styles.mapWrapper}>
         {Platform.OS === 'web' ? (
-          // For web browsers, render a raw HTML iframe directly
           <View style={styles.mapContainer}>
             {createElement('iframe', {
-              src: mapUrl,
-              style: { width: '100%', height: '100%', border: 'none', filter: 'invert(90%) hue-rotate(180deg)' }
+              srcDoc: BASE_HTML,
+              style: { width: '100%', height: '100%', border: 'none' },
+              ref: handleIframeRef,
             })}
           </View>
         ) : (
-          // For real iOS/Android devices, use React Native WebView
           <WebView
+            ref={webViewRef}
             originWhitelist={['*']}
-            source={{ uri: mapUrl }}
+            source={{ html: BASE_HTML }}
             style={styles.map}
+            javaScriptEnabled
           />
         )}
       </View>
-      
-      {/* Side Panel for Alerts */}
+
       <View style={styles.sidePanel}>
         <View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>
-            {alert.active ? '🚨 ' + alert.title : '✅ System Quiet'}
+            {alert.active ? alert.title : displayAreas.length > 0 ? t('map.recentAlert') : t('map.noThreats')}
           </Text>
           <Text style={styles.panelSubtitle}>
-            {alert.active ? `${alert.areas.length} locations targeted` : 'No active threats detected'}
+            {displayAreas.length > 0
+              ? `${displayAreas.length} ${t('map.locationsTargeted')}`
+              : t('map.noThreatsDetected')}
           </Text>
         </View>
 
-        {alert.active && (
-           <Animated.View style={[styles.areasList, { opacity: fadeAnim }]}>
-              <ScrollView style={{ flex: 1 }}>
-                {currentAreas.map((area, index) => (
-                  <View key={index} style={styles.areaItem}>
-                    <Text style={styles.areaText}>{area}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-              {alert.areas.length > 10 && (
-                 <Text style={styles.cycleIndicator}>Cycling {displayIndex + 1} - {Math.min(displayIndex + 10, alert.areas.length)} of {alert.areas.length}...</Text>
-              )}
-           </Animated.View>
+        {displayAreas.length > 0 && (
+          <Animated.View style={[styles.areasList, { opacity: fadeAnim }]}>
+            <ScrollView style={{ flex: 1 }}>
+              {currentAreas.map((area, index) => (
+                <AreaItem key={index} area={area} variant="list" />
+              ))}
+            </ScrollView>
+          </Animated.View>
         )}
       </View>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#000',
-  },
-  mapWrapper: {
-    flex: 9, // Takes up 90% of screen
-  },
-  mapContainer: {
-    width: '100%',
-    height: '100%',
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
+  container: { flex: 1, flexDirection: 'row', backgroundColor: '#000' },
+  mapWrapper: { flex: 9 },
+  mapContainer: { width: '100%', height: '100%' },
+  map: { width: '100%', height: '100%' },
   sidePanel: {
-    flex: 1, // Takes up 10% of screen
+    flex: 1,
     backgroundColor: '#1c1c1e',
     borderLeftWidth: 1,
     borderLeftColor: '#333',
@@ -140,34 +254,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
-  panelTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
+  panelTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
+  panelSubtitle: { color: '#8e8e93', fontSize: 14 },
+  areasList: { flex: 1 },
+  lingerNote: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#2c2c2e',
   },
-  panelSubtitle: {
-    color: '#8e8e93',
-    fontSize: 14,
-  },
-  areasList: {
-    flex: 1,
-  },
-  areaItem: {
-    padding: 15,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#333',
-  },
-  areaText: {
-    color: '#ff3b30', // Red for alert areas
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  cycleIndicator: {
-    color: '#8e8e93',
-    padding: 15,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    fontSize: 14,
-  }
+  lingerText: { color: '#8e8e93', fontSize: 12, lineHeight: 18 },
 });
