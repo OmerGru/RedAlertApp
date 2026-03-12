@@ -1,4 +1,5 @@
-import { StyleSheet, View, Text, Platform, ScrollView, Animated } from 'react-native';
+import { StyleSheet, View, Text, Platform, ScrollView, Animated, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useEffect, useState, createElement, useRef, useCallback } from 'react';
 import { useAlerts } from '../hooks/useAlerts';
@@ -23,16 +24,20 @@ interface CircleLayer {
   label: string;
 }
 
-function buildCircleLayers(activeAreas: string[], history: AlertHistoryEntry[]): CircleLayer[] {
+function buildCircleLayers(activeAreas: string[], history: AlertHistoryEntry[], alertTitle: string): CircleLayer[] {
   const now = Date.now();
   const layers: CircleLayer[] = [];
   const seen = new Set<string>();
 
+  const isEventEnded = alertTitle === 'האירוע הסתיים' || alertTitle === 'Event Ended';
+  const circleColor = isEventEnded ? '#00ff00' : '#ff2d00';
+
   for (const area of activeAreas) {
+    if (seen.has(area)) continue;
     const coords = CITY_COORDINATES[area];
     if (!coords) { console.warn(`[Map] No coordinates for: "${area}"`); continue; }
     seen.add(area);
-    layers.push({ ...coords, fillOpacity: 0.40, color: '#ff2d00', label: area });
+    layers.push({ ...coords, fillOpacity: 0.40, color: circleColor, label: area });
   }
 
   for (const entry of history) {
@@ -43,7 +48,7 @@ function buildCircleLayers(activeAreas: string[], history: AlertHistoryEntry[]):
       const coords = CITY_COORDINATES[area];
       if (!coords) continue;
       seen.add(area);
-      layers.push({ ...coords, fillOpacity: 0.40, color: '#ff2d00', label: area });
+      layers.push({ ...coords, fillOpacity: 0.40, color: circleColor, label: area });
     }
   }
 
@@ -138,6 +143,8 @@ export default function MapScreen() {
   const history = useAlertHistory();
   const [displayIndex, setDisplayIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const webViewRef = useRef<WebView>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -155,9 +162,9 @@ export default function MapScreen() {
 
   // Push layers whenever alert or history changes
   useEffect(() => {
-    const layers = buildCircleLayers(alert.active ? alert.areas : [], history);
+    const layers = buildCircleLayers(alert.active ? alert.areas : [], history, alert.title || '');
     pushLayers(layers);
-  }, [alert.active, alert.areas, history, pushLayers]);
+  }, [alert.active, alert.areas, alert.title, history, pushLayers]);
 
   const displayAreas = buildDisplayAreas(alert.active ? alert.areas : [], history);
 
@@ -183,14 +190,14 @@ export default function MapScreen() {
     // Once the iframe loads push the current state immediately
     if (el) {
       el.onload = () => {
-        const layers = buildCircleLayers(alert.active ? alert.areas : [], history);
+        const layers = buildCircleLayers(alert.active ? alert.areas : [], history, alert.title || '');
         el.contentWindow?.postMessage(JSON.stringify({ type: 'UPDATE_CIRCLES', layers }), '*');
       };
     }
   }, []); // intentionally empty deps — we want a stable ref callback
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.mapWrapper}>
         {Platform.OS === 'web' ? (
           <View style={styles.mapContainer}>
@@ -211,29 +218,30 @@ export default function MapScreen() {
         )}
       </View>
 
-      <View style={styles.sidePanel}>
-        <View style={styles.panelHeader}>
-          <Text style={styles.panelTitle}>
-            {alert.active ? alert.title : displayAreas.length > 0 ? t('map.recentAlert') : t('map.noThreats')}
-          </Text>
-          <Text style={styles.panelSubtitle}>
-            {displayAreas.length > 0
-              ? `${displayAreas.length} ${t('map.locationsTargeted')}`
-              : t('map.noThreatsDetected')}
-          </Text>
-        </View>
+      {!isMobile && (
+        <View style={styles.sidePanel}>
+          <View style={styles.panelHeader}>
+            <Text style={styles.panelTitle}>
+              {alert.active ? alert.title : displayAreas.length > 0 ? t('map.recentAlert') : t('map.noThreats')}
+            </Text>
+            <Text style={styles.panelSubtitle}>
+              {displayAreas.length > 0
+                ? `${displayAreas.length} ${t('map.locationsTargeted')}` : ''}
+            </Text>
+          </View>
 
-        {displayAreas.length > 0 && (
-          <Animated.View style={[styles.areasList, { opacity: fadeAnim }]}>
-            <ScrollView style={{ flex: 1 }}>
-              {currentAreas.map((area, index) => (
-                <AreaItem key={index} area={area} variant="list" />
-              ))}
-            </ScrollView>
-          </Animated.View>
-        )}
-      </View>
-    </View>
+          {displayAreas.length > 0 && (
+            <Animated.View style={[styles.areasList, { opacity: fadeAnim }]}>
+              <ScrollView style={{ flex: 1 }}>
+                {currentAreas.map((area, index) => (
+                  <AreaItem key={index} area={area} variant="list" />
+                ))}
+              </ScrollView>
+            </Animated.View>
+          )}
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
 

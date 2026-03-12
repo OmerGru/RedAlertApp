@@ -37,6 +37,8 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '500',
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   listItem: {
     padding: 15,
@@ -47,5 +49,7 @@ const styles = StyleSheet.create({
     color: '#ff3b30',
     fontSize: 16,
     fontWeight: '500',
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
 });

@@ -6,9 +6,11 @@
     "history": "היסטוריה"
   },
   "home": {
-    "alert": "התראה",
-    "quiet": "שקט",
-    "noThreats": "אין איומים פעילים"
+    "statusEnter": "היכנס למרחב מוגן במהירות",
+    "statusLeave": "בטוח לצאת מהמקלט",
+    "statusQuiet": "הכל שקט באזורך",
+    "currentLocation": "מיקום נוכחי: {{location}}",
+    "locationUnavailable": "מיקום לא זמין"
   },
   "map": {
     "noThreats": "אין איומים כרגע",
@@ -22,9 +24,13 @@
     "noAlerts": "אין התראות עדיין",
     "noAlertsSubtitle": "היסטוריית ההתראות תופיע כאן כשיתרחשו אירועים",
     "locations": "מיקומים",
-    "secondsAgo": "לפני {{n}}ש׳",
-    "minutesAgo": "לפני {{n}}ד׳",
-    "hoursAgo": "לפני {{h}}ש׳ {{m}}ד׳"
+    "formats": {
+      "secondsAgo": "לפני {{n}}ש׳",
+      "minutesAgo": "לפני {{n}}ד׳",
+      "hoursAgo": "לפני {{h}}ש׳ {{m}}ד׳"
+    },
+    "showAll": "הצג הכל",
+    "close": "סגור"
   },
   "settings": {
     "title": "הגדרות",
