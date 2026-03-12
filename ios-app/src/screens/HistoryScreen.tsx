@@ -1,9 +1,10 @@
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, Modal, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, Modal, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { useState, useMemo, memo, useEffect } from 'react';
 import { useAlertHistory } from '../hooks/useAlertHistory';
 import { AlertHistoryEntry } from '../utils/types';
 import { t } from '../utils/i18n';
-import { timeAgo } from '../utils/utils';
+import { timeAgo, getAlertColor } from '../utils/utils';
+import { COLOR_ALERT, COLOR_SUCCESS, COLOR_WARNING } from '../utils/constants';
 import { Ionicons } from '@expo/vector-icons';
 
 const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
@@ -11,15 +12,25 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
   const hasManyLocations = entry.areas.length > 8;
   const displayAreas = hasManyLocations ? entry.areas.slice(0, 8) : entry.areas;
 
+  const alertColor = getAlertColor(entry.title);
+  const isSuccess = alertColor === COLOR_SUCCESS;
+  const isWarning = alertColor === COLOR_WARNING;
+
   const joinedAreas = useMemo(() => displayAreas.join(' · '), [displayAreas]);
   const fullJoinedAreas = useMemo(() => entry.areas.join(' · '), [entry.areas]);
 
   return (
     <>
-      <View style={styles.entry}>
+      <View style={[styles.entry, isWarning && styles.entryWarning, !isWarning && isSuccess && styles.entrySuccess]}>
         <View style={styles.entryHeader}>
           <Text style={styles.entryTime}>{timeAgo(entry.timestamp)}</Text>
-          <Text style={styles.entryTitle}>{entry.title}</Text>
+          <Text
+            style={[styles.entryTitle, isWarning && styles.titleWarning, !isWarning && isSuccess && styles.titleSuccess]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {entry.title}
+          </Text>
         </View>
 
         <Text style={styles.entryAreas} numberOfLines={3}>
@@ -53,8 +64,14 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
           />
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>{entry.title}</Text>
+              <View style={{ flex: 1, marginRight: 15 }}>
+                <Text
+                  style={[styles.modalTitle, isWarning && styles.titleWarning, !isWarning && isSuccess && styles.titleSuccess]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {entry.title}
+                </Text>
                 <Text style={styles.modalTime}>{timeAgo(entry.timestamp)}</Text>
               </View>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
@@ -72,7 +89,7 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
             </ScrollView>
 
             <TouchableOpacity
-              style={styles.modalCloseBtn}
+              style={[styles.modalCloseBtn, isWarning && styles.modalCloseBtnWarning, !isWarning && isSuccess && styles.modalCloseBtnSuccess]}
               onPress={() => setModalVisible(false)}
             >
               <Text style={styles.modalCloseBtnText}>{t('history.close')}</Text>
@@ -86,6 +103,16 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
 
 export default function HistoryScreen() {
   const history = useAlertHistory();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredHistory = useMemo(() => {
+    if (!searchQuery.trim()) return history;
+    const lowerQuery = searchQuery.toLowerCase().trim();
+    return history.filter(entry =>
+      entry.areas.some(area => area.toLowerCase().includes(lowerQuery)) ||
+      entry.title?.toLowerCase().includes(lowerQuery)
+    );
+  }, [history, searchQuery]);
 
   return (
     <View style={styles.container}>
@@ -94,14 +121,38 @@ export default function HistoryScreen() {
         <Text style={styles.headerTitle}>{t('history.title')}</Text>
       </View>
 
-      {history.length === 0 ? (
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color="#8e8e93" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t('settings.searchCities')}
+            placeholderTextColor="#636366"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color="#8e8e93" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {filteredHistory.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>{t('history.noAlerts')}</Text>
-          <Text style={styles.emptySubtitle}>{t('history.noAlertsSubtitle')}</Text>
+          <Ionicons name="search-outline" size={48} color="#2c2c2e" style={{ marginBottom: 16 }} />
+          <Text style={styles.emptyTitle}>
+            {searchQuery ? t('map.noThreatsDetected') : t('history.noAlerts')}
+          </Text>
+          <Text style={styles.emptySubtitle}>
+            {searchQuery ? `${t('settings.searchCities').replace('...', '')} "${searchQuery}" ${t('history.noAlertsSubtitle').toLowerCase()}` : t('history.noAlertsSubtitle')}
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={history}
+          data={filteredHistory}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <HistoryEntry entry={item} />}
           contentContainerStyle={{ paddingBottom: 40 }}
@@ -127,16 +178,33 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
   headerSubtitle: { color: '#8e8e93', fontSize: 14, marginTop: 10, alignItems: 'center' },
+  searchContainer: {
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#1c1c1e', borderBottomWidth: 1, borderBottomColor: '#2c2c2e',
+  },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#0f0f13', borderRadius: 10,
+    paddingHorizontal: 12, height: 40,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, color: '#fff', fontSize: 16, textAlign: 'right' },
   entry: {
     marginHorizontal: 16, marginTop: 12,
     backgroundColor: '#1c1c1e', borderRadius: 12, padding: 16,
-    borderLeftWidth: 3, borderLeftColor: '#ff3b30',
+    borderLeftWidth: 3, borderLeftColor: COLOR_ALERT,
   },
+  entrySuccess: {
+    borderLeftColor: COLOR_SUCCESS,
+  },
+  entryWarning: { borderLeftColor: COLOR_WARNING },
   entryHeader: {
     flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: 8,
+    alignItems: 'baseline', marginBottom: 8,
   },
-  entryTitle: { color: '#ff3b30', fontSize: 15, fontWeight: '700' },
+  entryTitle: { color: COLOR_ALERT, fontSize: 15, fontWeight: '700', flex: 1, textAlign: 'right' },
+  titleSuccess: { color: COLOR_SUCCESS },
+  titleWarning: { color: COLOR_WARNING },
   entryTime: { color: '#636366', fontSize: 13, fontWeight: '500', marginLeft: 8 },
   entryAreas: { color: '#ebebf5', fontSize: 16, lineHeight: 22, marginBottom: 12, textAlign: 'right' },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', textAlign: 'right' },
@@ -162,15 +230,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     padding: 20, backgroundColor: '#2c2c2e',
   },
-  modalTitle: { color: '#ff3b30', fontSize: 18, fontWeight: 'bold', textAlign: 'right' },
+  modalTitle: { color: COLOR_ALERT, fontSize: 18, fontWeight: 'bold', textAlign: 'right' },
   modalTime: { color: '#8e8e93', fontSize: 14, marginTop: 2, textAlign: 'right' },
   closeButton: { padding: 4 },
   modalScroll: { padding: 20 },
   fullAreasText: { color: '#fff', fontSize: 18, lineHeight: 28, textAlign: 'right' },
   modalCloseBtn: {
-    margin: 20, backgroundColor: '#ff3b30',
+    margin: 20, backgroundColor: COLOR_ALERT,
     padding: 15, borderRadius: 12, alignItems: 'center',
   },
+  modalCloseBtnSuccess: { backgroundColor: COLOR_SUCCESS },
+  modalCloseBtnWarning: { backgroundColor: COLOR_WARNING },
   modalCloseBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },

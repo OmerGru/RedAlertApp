@@ -9,6 +9,10 @@ export const MAP_CIRCLE_LINGER_MS = 10 * 60 * 1000;
 export const ISRAEL_CENTER: [number, number] = [31.5, 34.9];
 export const ISRAEL_DEFAULT_ZOOM = 8;
 
+export const COLOR_ALERT = '#ff3b30';
+export const COLOR_SUCCESS = '#34C759';
+export const COLOR_WARNING = '#FF9500';
+
 export const CITY_COORDINATES: Record<string, { lat: number; lng: number; radius: number }> = {
   'תל אביב': { lat: 32.0852997, lng: 34.7818064, radius: 5000 },
   'ירושלים': { lat: 31.7788472, lng: 35.2257856, radius: 6000 },

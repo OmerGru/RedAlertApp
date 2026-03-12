@@ -14,6 +14,7 @@ import {
 } from '../utils/constants';
 import { AlertHistoryEntry } from '../utils/types';
 import { t } from '../utils/i18n';
+import { getAlertColor } from '../utils/utils';
 
 interface CircleLayer {
   lat: number;
@@ -30,25 +31,26 @@ function buildCircleLayers(activeAreas: string[], history: AlertHistoryEntry[], 
   const seen = new Set<string>();
 
   const isEventEnded = alertTitle === 'האירוע הסתיים' || alertTitle === 'Event Ended';
-  const circleColor = isEventEnded ? '#00ff00' : '#ff2d00';
+  const alertColor = getAlertColor(alertTitle);
 
   for (const area of activeAreas) {
     if (seen.has(area)) continue;
     const coords = CITY_COORDINATES[area];
     if (!coords) { console.warn(`[Map] No coordinates for: "${area}"`); continue; }
     seen.add(area);
-    layers.push({ ...coords, fillOpacity: 0.40, color: circleColor, label: area });
+    layers.push({ ...coords, fillOpacity: 0.40, color: alertColor, label: area });
   }
 
   for (const entry of history) {
     const ageMs = now - entry.timestamp;
     if (ageMs > MAP_CIRCLE_LINGER_MS) continue;
+    const entryColor = getAlertColor(entry.title);
     for (const area of entry.areas) {
       if (seen.has(area)) continue;
       const coords = CITY_COORDINATES[area];
       if (!coords) continue;
       seen.add(area);
-      layers.push({ ...coords, fillOpacity: 0.40, color: circleColor, label: area });
+      layers.push({ ...coords, fillOpacity: 0.40, color: entryColor, label: area });
     }
   }
 

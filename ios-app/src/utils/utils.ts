@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ALERTS_ENDPOINT, HISTORY_ENDPOINT } from './constants';
+import { ALERTS_ENDPOINT, HISTORY_ENDPOINT, COLOR_ALERT, COLOR_SUCCESS, COLOR_WARNING } from './constants';
 import { AlertState, AlertHistoryEntry } from './types';
 import { t } from './i18n';
 
@@ -31,4 +31,15 @@ export function timeAgo(timestamp: number): string {
   if (diffMin < 60) return t('history.formats.minutesAgo' as any, { n: diffMin });
   const diffHr = Math.floor(diffMin / 60);
   return t('history.formats.hoursAgo' as any, { h: diffHr, m: diffMin % 60 });
+}
+
+export function getAlertColor(title?: string): string {
+  if (!title) return COLOR_ALERT;
+  if (title.includes('בדקות הקרובות') || title.includes('expected in your area')) {
+    return COLOR_WARNING;
+  }
+  if (title.includes('האירוע הסתיים') || title.includes('Event Ended')) {
+    return COLOR_SUCCESS;
+  }
+  return COLOR_ALERT;
 }
