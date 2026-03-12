@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5, shadowRadius: 20,
   },
-  statusCircle: { flex: 1, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  statusCircle: { flex: 1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 140, overflow: 'hidden' },
   quietCircle: { borderColor: 'rgba(52,199,89,0.4)', backgroundColor: 'rgba(52,199,89,0.1)' },
   alertCircle: { borderColor: 'rgba(255,59,48,0.8)', backgroundColor: 'rgba(255,59,48,0.3)' },
   statusText: { fontSize: 56, fontWeight: '900', letterSpacing: 2 },
