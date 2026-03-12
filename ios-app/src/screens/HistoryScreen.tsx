@@ -18,8 +18,8 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
     <>
       <View style={styles.entry}>
         <View style={styles.entryHeader}>
-          <Text style={styles.entryTitle}>{entry.title}</Text>
           <Text style={styles.entryTime}>{timeAgo(entry.timestamp)}</Text>
+          <Text style={styles.entryTitle}>{entry.title}</Text>
         </View>
 
         <Text style={styles.entryAreas} numberOfLines={3}>
@@ -27,15 +27,15 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
         </Text>
 
         <View style={styles.footer}>
-          <Text style={styles.entryCount}>{entry.areas.length} {t('history.locations')}</Text>
-          {hasManyLocations && (
+          {hasManyLocations ? (
             <TouchableOpacity
               style={styles.showMoreButton}
               onPress={() => setModalVisible(true)}
             >
               <Text style={styles.showMoreText}>{t('history.showAll')}</Text>
             </TouchableOpacity>
-          )}
+          ) : <Text style={styles.entryCount}>{''}</Text>}
+          <Text style={styles.entryCount}>{entry.areas.length} {t('history.locations')}</Text>
         </View>
       </View>
 
@@ -62,9 +62,9 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView 
-              style={{ flex: 1 }} 
-              contentContainerStyle={styles.modalScroll} 
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.modalScroll}
               bounces={true}
               scrollEventThrottle={16}
             >
@@ -90,8 +90,8 @@ export default function HistoryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('history.title')}</Text>
         <Text style={styles.headerSubtitle}>{history.length} {t('history.eventsRecorded')}</Text>
+        <Text style={styles.headerTitle}>{t('history.title')}</Text>
       </View>
 
       {history.length === 0 ? (
@@ -117,12 +117,16 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f13' },
   header: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+
     paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20,
     backgroundColor: '#1c1c1e',
     borderBottomWidth: 1, borderBottomColor: '#2c2c2e',
   },
   headerTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  headerSubtitle: { color: '#8e8e93', fontSize: 13, marginTop: 4 },
+  headerSubtitle: { color: '#8e8e93', fontSize: 14, marginTop: 10, alignItems: 'center' },
   entry: {
     marginHorizontal: 16, marginTop: 12,
     backgroundColor: '#1c1c1e', borderRadius: 12, padding: 16,
@@ -132,11 +136,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'flex-start', marginBottom: 8,
   },
-  entryTitle: { color: '#ff3b30', fontSize: 15, fontWeight: '700', flex: 1, textAlign: 'right' },
+  entryTitle: { color: '#ff3b30', fontSize: 15, fontWeight: '700' },
   entryTime: { color: '#636366', fontSize: 13, fontWeight: '500', marginLeft: 8 },
   entryAreas: { color: '#ebebf5', fontSize: 16, lineHeight: 22, marginBottom: 12, textAlign: 'right' },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  entryCount: { color: '#636366', fontSize: 12 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', textAlign: 'right' },
+  entryCount: { color: '#636366', fontSize: 12, marginLeft: 8 },
   showMoreButton: {
     backgroundColor: '#2c2c2e',
     paddingHorizontal: 12, paddingVertical: 6,
@@ -162,7 +166,7 @@ const styles = StyleSheet.create({
   modalTime: { color: '#8e8e93', fontSize: 14, marginTop: 2, textAlign: 'right' },
   closeButton: { padding: 4 },
   modalScroll: { padding: 20 },
-  fullAreasText: { color: '#fff', fontSize: 18, lineHeight: 28, textAlign: 'right', writingDirection: 'rtl' },
+  fullAreasText: { color: '#fff', fontSize: 18, lineHeight: 28, textAlign: 'right' },
   modalCloseBtn: {
     margin: 20, backgroundColor: '#ff3b30',
     padding: 15, borderRadius: 12, alignItems: 'center',
