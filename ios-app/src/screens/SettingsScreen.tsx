@@ -111,7 +111,8 @@ export default function SettingsScreen() {
                 </View>
                 <TouchableOpacity onPress={() => toggle(city)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="close-circle" size={20} color="#3a3a3c" />
-                </TouchableOpacity>              </View>
+                </TouchableOpacity>
+              </View>
             ))
           )}
 

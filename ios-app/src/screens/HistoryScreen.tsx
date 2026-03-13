@@ -6,6 +6,8 @@ import { t } from '../utils/i18n';
 import { timeAgo, getAlertColor } from '../utils/utils';
 import { COLOR_ALERT, COLOR_SUCCESS, COLOR_WARNING } from '../utils/constants';
 import { Ionicons } from '@expo/vector-icons';
+import { useWatchedLocations } from '../hooks/useWatchedLocations';
+
 
 const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -45,8 +47,9 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
             >
               <Text style={styles.showMoreText}>{t('history.showAll')}</Text>
             </TouchableOpacity>
-          ) : <Text style={styles.entryCount}>{''}</Text>}
-          <Text style={styles.entryCount}>{entry.areas.length} {t('history.locations')}</Text>
+          ) : (
+            <Text style={styles.entryCount}>{''}</Text>
+          )}<Text style={styles.entryCount}>{entry.areas.length} {t('history.locations')}</Text>
         </View>
       </View>
 
@@ -103,25 +106,37 @@ const HistoryEntry = memo(({ entry }: { entry: AlertHistoryEntry }) => {
 
 export default function HistoryScreen() {
   const history = useAlertHistory();
+  const { watched } = useWatchedLocations();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showWatchedOnly, setShowWatchedOnly] = useState(false);
 
   const filteredHistory = useMemo(() => {
-    if (!searchQuery.trim()) return history;
+    let result = history;
+
+    if (showWatchedOnly && watched.size > 0) {
+      result = result.filter(entry =>
+        entry.areas.some(area =>
+          [...watched].some(watchedCity => area.includes(watchedCity))
+        )
+      );
+    }
+
+    if (!searchQuery.trim()) return result;
+
     const lowerQuery = searchQuery.toLowerCase().trim();
-    return history.filter(entry =>
+    return result.filter(entry =>
       entry.areas.some(area => area.toLowerCase().includes(lowerQuery)) ||
       entry.title?.toLowerCase().includes(lowerQuery)
     );
-  }, [history, searchQuery]);
+  }, [history, searchQuery, showWatchedOnly, watched]);
+
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerSubtitle}>{history.length} {t('history.eventsRecorded')}</Text>
         <Text style={styles.headerTitle}>{t('history.title')}</Text>
-      </View>
-
-      <View style={styles.searchContainer}>
+      </View><View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color="#8e8e93" style={styles.searchIcon} />
           <TextInput
@@ -138,29 +153,37 @@ export default function HistoryScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
-
-      {filteredHistory.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="search-outline" size={48} color="#2c2c2e" style={{ marginBottom: 16 }} />
-          <Text style={styles.emptyTitle}>
-            {searchQuery ? t('map.noThreatsDetected') : t('history.noAlerts')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {searchQuery ? `${t('settings.searchCities').replace('...', '')} "${searchQuery}" ${t('history.noAlertsSubtitle').toLowerCase()}` : t('history.noAlertsSubtitle')}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredHistory}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <HistoryEntry entry={item} />}
-          contentContainerStyle={{ paddingBottom: 40 }}
-          removeClippedSubviews={true}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-        />
-      )}
+        <TouchableOpacity
+          style={[styles.filterToggle, showWatchedOnly && styles.filterToggleActive]}
+          onPress={() => setShowWatchedOnly(!showWatchedOnly)}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={showWatchedOnly ? "bookmark" : "bookmark-outline"}
+            size={20}
+            color={showWatchedOnly ? "#fff" : "#8e8e93"}
+          />
+        </TouchableOpacity></View>{filteredHistory.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="search-outline" size={48} color="#2c2c2e" style={{ marginBottom: 16 }} />
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? t('map.noThreatsDetected') : t('history.noAlerts')}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery ? `${t('settings.searchCities').replace('...', '')} "${searchQuery}" ${t('history.noAlertsSubtitle').toLowerCase()}` : t('history.noAlertsSubtitle')}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredHistory}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <HistoryEntry entry={item} />}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            removeClippedSubviews={true}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+          />
+        )}
     </View>
   );
 }
@@ -179,16 +202,30 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
   headerSubtitle: { color: '#8e8e93', fontSize: 14, marginTop: 10, alignItems: 'center' },
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
     backgroundColor: '#1c1c1e', borderBottomWidth: 1, borderBottomColor: '#2c2c2e',
   },
   searchBar: {
+    flex: 1,
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#0f0f13', borderRadius: 10,
     paddingHorizontal: 12, height: 40,
   },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, color: '#fff', fontSize: 16, textAlign: 'right' },
+  filterToggle: {
+    width: 40, height: 40,
+    borderRadius: 10,
+    backgroundColor: '#0f0f13',
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: 12,
+  },
+  filterToggleActive: {
+    backgroundColor: COLOR_ALERT,
+  },
+
   entry: {
     marginHorizontal: 16, marginTop: 12,
     backgroundColor: '#1c1c1e', borderRadius: 12, padding: 16,

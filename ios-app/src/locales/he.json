@@ -30,7 +30,8 @@
       "hoursAgo": "לפני {{h}}ש׳ {{m}}ד׳"
     },
     "showAll": "הצג הכל",
-    "close": "סגור"
+    "close": "סגור",
+    "watchedOnly": "רק מיקומים במעקב"
   },
   "settings": {
     "title": "הגדרות",

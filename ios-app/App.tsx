@@ -1,18 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { I18nManager } from 'react-native';
 import RootNavigation from './src/navigation/RootNavigation';
 import { AlertProvider } from './src/context/AlertContext';
-
-// I18nManager.forceRTL(true);
-// I18nManager.allowRTL(true);
+import { WatchedLocationsProvider } from './src/context/WatchedLocationsContext';
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AlertProvider>
-        <RootNavigation />
-      </AlertProvider>
+      <WatchedLocationsProvider>
+        <AlertProvider>
+          <RootNavigation />
+        </AlertProvider>
+      </WatchedLocationsProvider>
       <StatusBar style="light" />
     </SafeAreaProvider>
   );

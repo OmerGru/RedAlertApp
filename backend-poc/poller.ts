@@ -44,10 +44,30 @@ function addToHistory(entry: AlertHistoryEntry) {
   if (history.length > MAX_HISTORY) history.pop();
 }
 
+
+app.get('/api/alerts', (req, res) => {
+  res.json({
+    active: alertActive,
+    title: alertTitle,
+    areas: currentAlerts,
+    timestamp: Date.now(),
+  });
+});
+
+app.get('/api/alerts/history', (req, res) => {
+  res.json(history);
+});
+
+const POLLING_INTERVAL_MS = 2000;
+const PORT = process.env.PORT || 3000;
+
+let quietCount = 0;
+
 async function fetchAlerts() {
   try {
     const response = await axios.get<AlertResponse>(OREF_ALERTS_URL, {
       headers: HEADERS,
+      timeout: 5000,
       transformResponse: [(data) => data],
     });
 
@@ -55,13 +75,20 @@ async function fetchAlerts() {
 
     if (rawData && rawData.trim() !== '') {
       const cleanData = rawData.replace(/^\uFEFF/, '');
-      const alertData: AlertResponse = JSON.parse(cleanData);
+      let alertData: AlertResponse;
+      try {
+        alertData = JSON.parse(cleanData);
+      } catch (e: any) {
+        console.error(`\n[${new Date().toISOString()}] ⚠️ Failed to parse Oref JSON:`, e.message);
+        return;
+      }
 
       if (alertData.id !== lastAlertId) {
         lastAlertId = alertData.id;
         currentAlerts = alertData.data;
         alertActive = true;
         alertTitle = alertData.title || 'Missile Alert';
+        quietCount = 0;
 
         const entry: AlertHistoryEntry = {
           id: alertData.id,
@@ -83,28 +110,21 @@ async function fetchAlerts() {
       alertActive = false;
       currentAlerts = [];
       alertTitle = 'Quiet';
-      process.stdout.write('.');
+      
+      quietCount++;
+      if (quietCount % 15 === 0) { // Log a dot every 15 checks (~30s)
+          process.stdout.write('.');
+      }
     }
   } catch (error: any) {
-    console.error('\n❌ [Error fetching alerts]:', error.message);
+    const time = new Date().toISOString();
+    if (error.code === 'ECONNABORTED') {
+        console.error(`\n[${time}] ⏱️  Oref Timeout`);
+    } else {
+        console.error(`\n[${time}] ❌ [Error fetching alerts]:`, error.message);
+    }
   }
 }
-
-app.get('/api/alerts', (req, res) => {
-  res.json({
-    active: alertActive,
-    title: alertTitle,
-    areas: currentAlerts,
-    timestamp: Date.now(),
-  });
-});
-
-app.get('/api/alerts/history', (req, res) => {
-  res.json(history);
-});
-
-const POLLING_INTERVAL_MS = 2000;
-const PORT = 3000;
 
 app.listen(PORT, () => {
   console.log('==================================================');
