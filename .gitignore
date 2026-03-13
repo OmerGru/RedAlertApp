@@ -1,8 +1,11 @@
 # Node.js
 node_modules/
-npm-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Expo / React Native
 .expo/
@@ -22,11 +25,25 @@ package-lock.json
 .env.development.local
 .env.test.local
 .env.production.local
+.env.keys
 
 # Web builds
 web-build/
 dist/
+.dev/
+.cache/
 
 # iOS/Android Native folders
 ios/
 android/
+
+# Supabase
+.supabase/
+supabase/.temp/
+supabase/.branches/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo

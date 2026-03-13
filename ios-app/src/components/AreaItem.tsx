@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#333',
   },
   listText: {
-    color: '#ff3b30',
+    color: '#FFF',
     fontSize: 16,
     fontWeight: '500',
     textAlign: 'right',

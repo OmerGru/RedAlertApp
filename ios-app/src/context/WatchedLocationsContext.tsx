@@ -7,6 +7,7 @@ async function storageGet(key: string): Promise<string | null> {
   if (Platform.OS === 'web') {
     return localStorage.getItem(key);
   }
+
   const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
   return AsyncStorage.getItem(key);
 }
@@ -16,6 +17,7 @@ async function storageSet(key: string, value: string): Promise<void> {
     localStorage.setItem(key, value);
     return;
   }
+
   const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
   AsyncStorage.setItem(key, value);
 }

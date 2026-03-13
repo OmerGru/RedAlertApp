@@ -87,7 +87,38 @@ const BASE_HTML = `<!DOCTYPE html>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #map { width: 100%; height: 100%; background: #1a1a2e; }
+    html, body, #map { 
+      width: 100%; height: 100%; background: #1a1a2e; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .white-label { 
+      color: #fff !important; 
+      font-weight: 500; 
+      font-size: 13px; 
+      letter-spacing: 0.1px;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      text-shadow: 
+        -1px -1px 0 #000,  
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
+    }
+    .leaflet-tooltip { 
+      color: #fff !important; 
+      background: transparent !important; 
+      border: none !important; 
+      box-shadow: none !important;
+      font-weight: 500;
+      font-size: 13px;
+      text-shadow: 
+        -1px -1px 0 #000,  
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
+    }
+    .leaflet-tooltip-left:before, .leaflet-tooltip-right:before, .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before { display: none !important; }
   </style>
 </head>
 <body>
@@ -100,7 +131,7 @@ const BASE_HTML = `<!DOCTYPE html>
       attributionControl: false
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
       maxZoom: 19
     }).addTo(map);
 
@@ -117,7 +148,7 @@ const BASE_HTML = `<!DOCTYPE html>
           weight: 2,
           opacity: Math.min(l.fillOpacity * 2, 0.9)
         }).addTo(circleLayer)
-          .bindTooltip(l.label, { permanent: false, direction: 'top' });
+          .bindTooltip(l.label, { permanent: true, direction: 'top', className: 'white-label' });
       });
     }
 
