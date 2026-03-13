@@ -1,75 +1,101 @@
-:root {
-  --primary: #ff3b30;
-  --secondary: #5856d6;
-  --background: #000000;
-  --surface: #1c1c1e;
-  --text: #ffffff;
-  --text-dim: #8e8e93;
-  --glass: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.2);
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 * {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
 }
 
-body {
-  background-color: var(--background);
-  color: var(--text);
-  overflow-x: hidden;
-}
-
-.glass-card {
-  background: var(--glass);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 20px;
-}
-
-.alert-item {
-  animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-  from { transform: translateX(20px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-.map-container {
-  height: 400px;
+html, body, #root {
+  height: 100%;
   width: 100%;
-  border-radius: 20px;
   overflow: hidden;
-  margin-top: 20px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: #0f0f13;
+  color: #fff;
+  direction: rtl;
 }
 
-.pulse {
-  animation: pulse-red 2s infinite;
+/* App Layout */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
-@keyframes pulse-red {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
-h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  letter-spacing: -1px;
+/* Tab Bar */
+.app-tab-bar {
+  display: flex;
+  flex-direction: row;
+  background: #121212;
+  border-top: 1px solid #222;
+  padding: 6px 0;
+  flex-shrink: 0;
 }
 
-.badge {
-  padding: 4px 12px;
-  border-radius: 100px;
-  font-size: 0.8rem;
+.app-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #8E8E93;
+  transition: color 0.2s;
+}
+
+.app-tab:hover {
+  color: #aaa;
+}
+
+.app-tab.active {
+  color: #FF3B30;
+}
+
+.app-tab-label {
+  font-size: 10px;
   font-weight: 600;
-  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.badge-red { background: var(--primary); color: white; }
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Leaflet fixes */
+.leaflet-container {
+  background: #1a1a2e !important;
+  font-family: inherit;
+}
+
+.leaflet-control-zoom a {
+  background: #1c1c1e !important;
+  color: #fff !important;
+  border-color: #333 !important;
+}

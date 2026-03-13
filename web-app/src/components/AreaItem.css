@@ -1,0 +1,30 @@
+.area-badge {
+  padding: 10px 16px;
+  border-radius: 20px;
+  margin: 6px 4px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: inline-block;
+}
+
+.area-badge-text {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  direction: rtl;
+}
+
+.area-list-item {
+  padding: 15px;
+  border-bottom: 0.5px solid #333;
+}
+
+.area-list-text {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  direction: rtl;
+  text-align: right;
+  display: block;
+}

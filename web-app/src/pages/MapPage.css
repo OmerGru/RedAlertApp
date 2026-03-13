@@ -1,0 +1,83 @@
+.map-container {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  background: #000;
+}
+
+.map-wrapper {
+  flex: 9;
+  min-height: 0;
+}
+
+.map-side-panel {
+  flex: 3;
+  background: #1c1c1e;
+  border-left: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.map-panel-header {
+  padding: 20px;
+  background: #2c2c2e;
+  border-bottom: 1px solid #333;
+}
+
+.map-panel-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  text-align: right;
+}
+
+.map-panel-subtitle {
+  color: #8e8e93;
+  font-size: 14px;
+  text-align: right;
+}
+
+.map-areas-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Leaflet tooltip overrides */
+.map-white-label {
+  color: #fff !important;
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.1px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+}
+
+.map-white-label::before {
+  display: none !important;
+}
+
+/* Responsive: stack on mobile */
+@media (max-width: 768px) {
+  .map-container {
+    flex-direction: column;
+  }
+
+  .map-wrapper {
+    flex: none;
+    height: 60vh;
+  }
+
+  .map-side-panel {
+    flex: none;
+    border-left: none;
+    border-top: 1px solid #333;
+  }
+}

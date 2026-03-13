@@ -1,0 +1,51 @@
+{
+  "tabs": {
+    "home": "ראשי",
+    "map": "מפה",
+    "settings": "הגדרות",
+    "history": "היסטוריה"
+  },
+  "home": {
+    "statusEnter": "היכנס למרחב מוגן במהירות",
+    "statusLeave": "בטוח לצאת מהמקלט",
+    "statusQuiet": "הכל שקט באזורך",
+    "currentLocation": "מיקום נוכחי: {{location}}",
+    "locationUnavailable": "מיקום לא זמין"
+  },
+  "map": {
+    "noThreats": "אין איומים כרגע",
+    "noThreatsDetected": "לא זוהו איומים פעילים",
+    "locationsTargeted": "מיקומים ממוקדים",
+    "recentAlert": "התראה אחרונה"
+  },
+  "history": {
+    "title": "היסטוריית התראות",
+    "eventsRecorded": "אירועים מתועדים",
+    "noAlerts": "אין התראות עדיין",
+    "noAlertsSubtitle": "היסטוריית ההתראות תופיע כאן כשיתרחשו אירועים",
+    "locations": "מיקומים",
+    "formats": {
+      "secondsAgo": "לפני {{n}}ש׳",
+      "minutesAgo": "לפני {{n}}ד׳",
+      "hoursAgo": "לפני {{h}}ש׳ {{m}}ד׳"
+    },
+    "showAll": "הצג הכל",
+    "close": "סגור",
+    "watchedOnly": "רק מיקומים במעקב"
+  },
+  "settings": {
+    "title": "הגדרות",
+    "alertSettings": "הגדרות התראות",
+    "circuitLinger": "זמן שהיית מעגלים במפה",
+    "minutes": "דקות",
+    "watchedLocations": "מיקומים במעקב",
+    "watchedSubtitle": "ערים שאתה עוקב אחריהן — ישמשו לסינון התראות עתידי",
+    "noLocations": "לא נבחרו מיקומים",
+    "addLocation": "הוסף מיקום",
+    "done": "סיום",
+    "gps": "GPS",
+    "locating": "מאתר...",
+    "searchCities": "חפש ערים...",
+    "noCitiesToAdd": "אין עוד ערים להוסיף"
+  }
+}

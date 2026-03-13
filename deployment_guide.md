@@ -10,11 +10,30 @@ You have already started this. Ensure the `poll-oref` function is deployed.
    - `SUPABASE_SERVICE_ROLE_KEY` (for database access)
 
 ## 2. Web App (Lovable / Vite)
-1. **Repository**: Ensure your code is pushed to GitHub.
-2. **Lovable Settings**: In [Lovable.dev](https://lovable.dev), ensure your project is connected.
-3. **Environment Variables**:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
+
+Lovable acts as the AI editor for your frontend. To connect your existing GitHub repository to a new Lovable project:
+
+1.  **Push to GitHub**: Ensure your latest code is pushed to your GitHub repository (e.g., `RedAlertApp`).
+2.  **Create Lovable Project**:
+    *   Go to [Lovable.dev](https://lovable.dev) and click **"New Project"**.
+    *   Give it a name (e.g., "Red Alert Web").
+3.  **Connect GitHub**:
+    *   In the project editor, click the **GitHub icon** (top right) or go to **Settings > GitHub**.
+    *   Click **"Connect to GitHub"** and authorize the Lovable App.
+    *   **Crucial Step**: Lovable will ask to create a repository. Let it create a *new* repo (e.g., `lovable-red-alert`).
+4.  **Sync Your Existing Code**:
+    *   Since you already have a codebase, you need to push your local `web-app` code into this new Lovable-managed repository.
+    *   Add the new Lovable repo as a remote:
+      ```bash
+      git remote add lovable <LOVABLE_REPO_URL>
+      git push lovable main --force
+      ```
+    *   Once pushed, Lovable will auto-sync and reflect your code in the editor.
+5.  **Environment Variables**:
+    *   In Lovable, go to **Settings > Environment Variables**.
+    *   Add your Supabase credentials:
+        *   `VITE_SUPABASE_URL`
+        *   `VITE_SUPABASE_ANON_KEY`
 
 ## 3. Custom Domain Setup (Current Step)
 To connect your own domain (e.g., `redalert-israel.com`):
