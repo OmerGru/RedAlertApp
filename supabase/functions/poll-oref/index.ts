@@ -11,6 +11,8 @@ const HEADERS = {
   'X-Requested-With': 'XMLHttpRequest',
 };
 
+const ALERT_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
 serve(async (req: Request) => {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -18,20 +20,24 @@ serve(async (req: Request) => {
   )
 
   try {
+    // 1. Clean up alerts older than 10 minutes
+    const cutoff = new Date(Date.now() - ALERT_TTL_MS).toISOString();
+    await supabase.from('alerts').delete().lt('timestamp', cutoff);
+
+    // 2. Fetch from Oref
     const response = await fetch(OREF_ALERTS_URL, { headers: HEADERS });
     const rawText = await response.text();
 
     if (!rawText || rawText.trim() === '') {
-      // Clear current alerts if no active ones
-      await supabase.from('alerts').delete().neq('id', 'non-existent');
+      // No active alert — just return quiet (old alerts will expire via TTL above)
       return new Response(JSON.stringify({ status: 'quiet' }), { headers: { "Content-Type": "application/json" } });
     }
 
     const cleanData = rawText.replace(/^\uFEFF/, '');
     const alertData = JSON.parse(cleanData);
 
-    // Upsert the alert
-    const { error } = await supabase
+    // 3. Upsert into alerts table (stays for 10 minutes)
+    const { error: alertError } = await supabase
       .from('alerts')
       .upsert({
         id: alertData.id,
@@ -41,7 +47,29 @@ serve(async (req: Request) => {
         timestamp: new Date().toISOString()
       });
 
-    if (error) throw error;
+    if (alertError) throw alertError;
+
+    // 4. Insert into alert_history (permanent record, deduplicated by oref_id)
+    const { data: existing } = await supabase
+      .from('alert_history')
+      .select('id')
+      .eq('oref_id', alertData.id)
+      .limit(1);
+
+    if (!existing || existing.length === 0) {
+      const { error: historyError } = await supabase
+        .from('alert_history')
+        .insert({
+          oref_id: alertData.id,
+          title: alertData.title,
+          areas: alertData.data,
+          timestamp: new Date().toISOString()
+        });
+
+      if (historyError) {
+        console.error('History insert error:', historyError.message);
+      }
+    }
 
     return new Response(JSON.stringify({ status: 'alert_synced', id: alertData.id }), { headers: { "Content-Type": "application/json" } });
 

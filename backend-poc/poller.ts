@@ -1,9 +1,15 @@
 import axios from 'axios';
 import express from 'express';
 import cors from 'cors';
+import { createClient } from '@supabase/supabase-js';
 
 const app = express();
 app.use(cors());
+
+// Supabase Configuration
+const SUPABASE_URL = "https://jsjuomajgrqzmoaaurmj.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzanVvbWFqZ3Jxem1vYWF1cm1qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzQyMTI3MCwiZXhwIjoyMDg4OTk3MjcwfQ.WTjXR9cwq0mipwjWpqtjjyJdZuz2RZ-jrXDM5s8CIko";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const OREF_ALERTS_URL = 'https://www.oref.org.il/WarningMessages/alert/alerts.json';
 
@@ -15,6 +21,8 @@ const HEADERS = {
   'Referer': 'https://www.oref.org.il/',
   'X-Requested-With': 'XMLHttpRequest',
 };
+
+const ALERT_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 interface AlertResponse {
   id: string;
@@ -44,7 +52,6 @@ function addToHistory(entry: AlertHistoryEntry) {
   if (history.length > MAX_HISTORY) history.pop();
 }
 
-
 app.get('/api/alerts', (req, res) => {
   res.json({
     active: alertActive,
@@ -62,6 +69,51 @@ const POLLING_INTERVAL_MS = 2000;
 const PORT = process.env.PORT || 3000;
 
 let quietCount = 0;
+
+async function syncToSupabase(alertData: AlertResponse | null) {
+  try {
+    // 1. Clean up alerts older than 10 minutes
+    const cutoff = new Date(Date.now() - ALERT_TTL_MS).toISOString();
+    await supabase.from('alerts').delete().lt('timestamp', cutoff);
+
+    if (!alertData) return;
+
+    // 2. Upsert into alerts table
+    const { error: alertError } = await supabase
+      .from('alerts')
+      .upsert({
+        id: alertData.id,
+        title: alertData.title,
+        areas: alertData.data,
+        source_json: alertData,
+        timestamp: new Date().toISOString()
+      });
+
+    if (alertError) console.error('Supabase alert sync error:', alertError.message);
+
+    // 3. Insert into alert_history
+    const { data: existing } = await supabase
+      .from('alert_history')
+      .select('id')
+      .eq('oref_id', alertData.id)
+      .limit(1);
+
+    if (!existing || existing.length === 0) {
+      const { error: historyError } = await supabase
+        .from('alert_history')
+        .insert({
+          oref_id: alertData.id,
+          title: alertData.title,
+          areas: alertData.data,
+          timestamp: new Date().toISOString()
+        });
+
+      if (historyError) console.error('Supabase history sync error:', historyError.message);
+    }
+  } catch (err: any) {
+    console.error('Supabase sync exception:', err?.message || err);
+  }
+}
 
 async function fetchAlerts() {
   try {
@@ -82,6 +134,9 @@ async function fetchAlerts() {
         console.error(`\n[${new Date().toISOString()}] ⚠️ Failed to parse Oref JSON:`, e.message);
         return;
       }
+
+      // Sync to Supabase
+      await syncToSupabase(alertData);
 
       if (alertData.id !== lastAlertId) {
         lastAlertId = alertData.id;
@@ -104,6 +159,9 @@ async function fetchAlerts() {
         console.log('--------------------------------------------------');
       }
     } else {
+      // Still sync to handle TTL cleanup even when quiet
+      await syncToSupabase(null);
+
       if (alertActive) {
         console.log(`\n🟢 [ALL CLEAR - ${new Date().toISOString()}]`);
       }
@@ -112,7 +170,7 @@ async function fetchAlerts() {
       alertTitle = 'Quiet';
       
       quietCount++;
-      if (quietCount % 15 === 0) { // Log a dot every 15 checks (~30s)
+      if (quietCount % 15 === 0) {
           process.stdout.write('.');
       }
     }
@@ -130,8 +188,10 @@ app.listen(PORT, () => {
   console.log('==================================================');
   console.log(`🛡️  Oref API Poller & Express Server Running on port ${PORT}`);
   console.log(`⏱️  Polling Oref every ${POLLING_INTERVAL_MS / 1000} seconds...`);
+  console.log(`⚡ Supabase Sync Enabled: ${SUPABASE_URL}`);
   console.log('==================================================');
 
   setInterval(fetchAlerts, POLLING_INTERVAL_MS);
   fetchAlerts();
 });
+
