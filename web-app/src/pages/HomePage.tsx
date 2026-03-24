@@ -5,6 +5,7 @@ import { useAlerts } from '../hooks/useAlerts';
 import { useAlertHistory } from '../hooks/useAlertHistory';
 import { useWatchedLocations } from '../hooks/useWatchedLocations';
 import { useCurrentLocation } from '../hooks/useCurrentLocation';
+import HourlyAlertGraph from '../components/HourlyAlertGraph';
 import { t } from '../utils/i18n';
 import './HomePage.css';
 
@@ -86,6 +87,10 @@ export default function HomePage() {
       <p className={`home-subtitle ${isUrgent ? 'alert' : isSafeLeave ? 'safe' : ''}`}>
         {getSubtitleText()}
       </p>
+
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+        <HourlyAlertGraph />
+      </div>
     </div>
   );
 }

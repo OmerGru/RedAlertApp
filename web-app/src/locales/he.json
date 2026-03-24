@@ -10,7 +10,9 @@
     "statusLeave": "בטוח לצאת מהמקלט",
     "statusQuiet": "הכל שקט באזורך",
     "currentLocation": "מיקום נוכחי: {{location}}",
-    "locationUnavailable": "מיקום לא זמין"
+    "locationUnavailable": "מיקום לא זמין",
+    "hourlyGraphTitle": "הסבירות להתראות לפי שעה",
+    "hourlyGraphSubtitle": "מבוסס על נתוני היסטוריה הידועים לנו"
   },
   "map": {
     "noThreats": "אין איומים כרגע",

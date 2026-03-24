@@ -1,0 +1,79 @@
+.hourly-graph-container {
+  margin-top: 32px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: calc(100% - 40px);
+  max-width: 400px;
+  align-self: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.hourly-graph-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.hourly-graph-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.hourly-graph-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+.hourly-graph-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 120px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hourly-graph-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+  position: relative;
+}
+
+.hourly-graph-bar-wrapper {
+  height: 100px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hourly-graph-bar {
+  width: 6px;
+  border-radius: 4px;
+  background: linear-gradient(to top, rgba(239, 68, 68, 0.3), #ff3b3b);
+  box-shadow: 0 0 8px rgba(255, 59, 59, 0.3);
+}
+
+.hourly-graph-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  position: absolute;
+  bottom: -22px;
+}
